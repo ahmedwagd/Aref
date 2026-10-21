@@ -22,7 +22,7 @@
 - [x] 4.1 Cross-check every non-negotiable and data-flow rule in `AGENTS.md` §3, §7, §8, §9 against the SRS — verify a written mapping exists (in the PR description or the SRS traceability table) for each rule.
 - [x] 4.2 Run `openspec validate add-prd-srs` and confirm it passes — fix any validation error before committing. Evidence recorded in the approval pass on 2026-10-21: `Change 'add-prd-srs' is valid`.
 - [x] 4.3 Verify no secrets, real API keys, or user text appear in the four new files — grep the docs for key-like patterns and confirm zero matches.
-- [ ] 4.4 Commit with `docs: add PRD and SRS for Aref v1` — verify `git log --oneline -1` shows the commit and `git status` is clean.
+- [x] 4.4 Commit with `docs: add PRD and SRS for Aref v1` — verify `git log --oneline -1` shows the commit and `git status` is clean. Evidence: commit `561474f` (`docs: add PRD and SRS for Aref v1`), 6 files; `openspec validate add-prd-srs` → `Change 'add-prd-srs' is valid` (exit 0); `git status --short` clean after the commit.
 
 ## Workflow follow-up
 
