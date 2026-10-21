@@ -1,0 +1,35 @@
+schema: spec-driven
+
+# Project context
+context: |
+  Product: Aref (عارف) — local-first Windows desktop app (Tauri 2 + React 19 + Rust).
+  Features: offline AI-text detector; LLM humanizer that rewrites through the user's own
+  provider keys (BYOK) and iterates against the local detector.
+  v1 is Windows-only; Arabic-first with baseline English; full RTL support.
+  OpenSpec is the primary workflow: every phase and step goes through an approved change
+  before implementation.
+  No backend, no telemetry, no accounts; API keys live only in the OS keyring.
+  UI visual baseline: the tashfeenahmed/freellmapi dashboard, adapted to Aref and RTL.
+  Styling: Tailwind CSS latest (v4.x) via @tailwindcss/vite.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
