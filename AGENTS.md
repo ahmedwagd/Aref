@@ -214,7 +214,7 @@ False-positive targets: ≤ 5% English, ≤ 10% Arabic.
 
 - **OpenSpec-first, in every phase and step:** discovery → proposal → approved change → implementation tasks → apply → archive. Nothing is implemented before the change is approved, and every phase is recorded as an OpenSpec artifact. Use the `openspec` CLI or the `opsx` commands in `.opencode/`.
 - Small, focused PRs. One concern per PR. Conventional Commits (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`).
-- Current build order (each step is its own OpenSpec change): **skeleton + Providers & Security** (FR-201..207, FR-301..304) delivered as four sequential PRs, while the evaluation-corpus track runs in parallel.
+- Current build order (each step is its own OpenSpec change): **skeleton + Providers & Security** — providers and keys `FR-301..313`, carrying the keyring guarantee `FR-310`, `FR-313`, `NFR-201`, `NFR-202`, the loopback-only discovery rule `FR-304` / `NFR-206`, provider selection across the `opencode` / `ollama` / `lm_studio` flavours before any cloud key (`FR-312`, with OpenCode's endpoint still open under `G-19`), and the error envelope `NFR-205` / `NFR-306` — delivered as four sequential PRs, while the evaluation-corpus track (`NFR-303..305`) runs in parallel. `FR-2xx` is humanization, not providers.
 - PR description must include: requirement IDs, what changed, how it was tested, and anything intentionally left out.
 
 ### Definition of done
