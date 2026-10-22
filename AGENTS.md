@@ -300,3 +300,9 @@ Fetch public sources only. Never send repository content, user text, code, API k
 
 ### 16.2 OpenSpec discovery
 Run, in order: `openspec context --json` (resolve `root.path`) → `openspec list --json` → `openspec list --specs --json` → read `<root>/openspec/config.yaml` → for the target change `openspec status --change "<name>" --json` and read its artifacts. If `root` is null, stop before writing anything, do not create `openspec/` as a side effect, and ask (§14.1) whether to initialize, target a store, or proceed without OpenSpec.
+
+### 16.3 Release operations (commit and archive)
+- Only the `release-operator` agent runs `git add`, `git commit`, and `openspec archive`, and only on exact commands the user approved through the `question` tool (the approval is quoted in the delegation payload). No other agent commits or archives.
+- Paths are always listed explicitly. `git add -A`, `git add .`, `git commit -a`, `--amend`, and `--no-verify` are forbidden.
+- Push, merge, release, rebase, reset, tag, and deletions are user-only; agents propose them and never run them.
+- Commands run one at a time, with a preflight before and a stop at the first unexpected output.
