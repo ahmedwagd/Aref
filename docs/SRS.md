@@ -364,7 +364,7 @@ Table 3.3-2 — HTTP 429 handling (normative)
 | Condition | Required behavior |
 |---|---|
 | `Retry-After` present and parseable | Wait for the stated duration |
-| `Retry-After` absent or unparseable | Wait for an exponential backoff interval; base and cap are `Pending decision (G-13)` |
+| `Retry-After` absent or unparseable | Wait `min(cap, base * 2^(n-1))` after the `n`-th failed attempt, with base 1 s and cap 30 s per wait, and draw the actual wait with full jitter uniformly in `[0, computed]`. A `Retry-After` that is present and parseable replaces this computed delay rather than being combined with it (`G-13`, resolved 2026-10-22) |
 | Only some keys rate-limited | Fail over within the pool per FR-302 |
 | All keys rate-limited | Show "try again in X minutes" with the computed wait time |
 
@@ -377,7 +377,7 @@ The system MUST call providers exclusively through OpenAI-compatible endpoints a
 - AC `FR-301: calls an OpenAI-compatible chat-completions endpoint`
 - AC `FR-301: adds no provider-specific SDK dependency`
 - Traces `AGENTS.md` §3.7; §8 bullet 1; §4
-- Note how the model identifier for a provider is determined is `Pending decision (G-09)`.
+- Note the model identifier for a provider is a required, user-supplied `model_id` on the provider entry and is authoritative: selection and every request read that field from configuration, never an OpenAI-compatible models route, and no model is ever chosen on the user's behalf (`G-09`, resolved 2026-10-22). A user-initiated listing MAY fill the field as an assist, and an unknown or wrong model name is an ordinary provider failure under FR-309.
 
 **FR-302** · `Draft`
 
@@ -433,6 +433,9 @@ On a network drop mid-run the system MUST retry with exponential backoff and, wh
 
 - AC `FR-308: retries with exponential backoff after a network drop`
 - AC `FR-308: returns completed chunks after the final network failure`
+- AC `FR-308: waits min(cap, base * 2^(n-1)) with base 1 s and cap 30 s after the n-th failed attempt`
+- AC `FR-308: draws each wait with full jitter uniformly in [0, computed delay] from an injected source, so a fixed draw reproduces the schedule offline`
+- AC `FR-308: uses one curve for a network drop, a timeout, and a 429 without a usable Retry-After, and lets a present parseable Retry-After replace the computed delay instead of combining with it`
 - Traces `AGENTS.md` §8 row "Network drop mid-run"
 
 **FR-309** · `Draft`
@@ -451,8 +454,12 @@ The system MUST store API keys only in the OS keyring and MUST return to the UI 
 
 - AC `FR-310: stores the key only in the OS keyring`
 - AC `FR-310: returns only a masked preview after adding a key`
+- AC `FR-310: shows a fixed-width mask that does not vary with key length`
+- AC `FR-310: shows only the last four characters of the key and no part of its prefix`
+- AC `FR-310: returns byte-identical previews for two keys that differ only outside the last four characters`
+- AC `FR-310: computes the preview once when the key is saved and never re-reads a stored key to recompute it`
 - Traces `AGENTS.md` §3.3; §8; §9
-- Note the masking rule and its non-reversibility test are `Pending decision (G-27)`. A raw key may cross the IPC boundary once, from the key-entry field to the Rust core, and the front end MUST NOT retain or re-read it.
+- Note the masked preview is the key's last four characters behind a mask of fixed width that does not vary with key length and includes no part of the key's prefix (`G-27`, resolved 2026-10-22); it is computed once when the key is saved, is never recomputed by re-reading the stored key, and is not reversible to the key because two keys that differ only outside those four characters produce byte-identical previews. A raw key may cross the IPC boundary once, from the key-entry field to the Rust core, and the front end MUST NOT retain or re-read it.
 
 **FR-311** · `Draft`
 
@@ -469,7 +476,7 @@ When more than one provider is enabled in configuration, the system MUST select 
 - AC `FR-312: prefers an enabled local provider over a cloud key`
 - AC `FR-312: selects a provider without any network request`
 - Traces `AGENTS.md` §8 bullet 1
-- Note an earlier draft of this criterion said "reachable"; selection reads enabled configuration, so the test asserts configured preference and no egress rather than a freshly observed provider (FR-212). The OpenCode endpoint and port are unknown (`Pending decision (G-19)`); no port and no probe rule is defined for OpenCode in v1.
+- Note an earlier draft of this criterion said "reachable"; selection reads enabled configuration, so the test asserts configured preference and no egress rather than a freshly observed provider (FR-212). OpenCode is user-configured only (`G-19`, resolved 2026-10-22): an entry with `kind` `local` and `local_flavor` `opencode` carries a loopback `base_url` and a `model_id` supplied by the user, requires no key, and is disabled by default. Aref never discovers or probes for it; `FR-304`'s ports 11434 and 1234 remain the only probe targets, and no default endpoint, default port, or probe rule is defined for OpenCode in v1.
 
 **FR-313** · `Draft`
 
@@ -477,8 +484,11 @@ When the OS keyring is unavailable the system MUST block key storage with a clea
 
 - AC `FR-313: blocks key storage when the keyring is unavailable`
 - AC `FR-313: writes no key to disk when the keyring is unavailable`
+- AC `FR-313: fails over past a stored key the keyring cannot read without marking it invalid`
+- AC `FR-313: reports E_KEYRING_UNAVAILABLE with reason unreadable when no stored key can be read and retains each key with its status unchanged`
+- AC `FR-313: never caches, decrypts, or deletes a key it cannot read, and treats a write that reads back unreadable the same way`
 - Traces `AGENTS.md` §8 row "Keyring unavailable"; §3.3
-- Note the behavior when existing keys cannot be read is `Pending decision (G-20)`; the system MUST NOT keep a cached or decrypted copy, and MUST NOT delete the key.
+- Note the behavior when existing keys cannot be read is that such a key is unusable but not `invalid`: the core fails over past it, its status is left unchanged, and when no stored key can be read and no keyless local provider is selected under FR-303 and FR-312, the run reports `E_KEYRING_UNAVAILABLE` with `reason` `unreadable` and asks the user to unlock or repair the OS keyring (`G-20`, resolved 2026-10-22); the system MUST NOT keep a cached or decrypted copy, and MUST NOT delete the key.
 
 ### 3.4 Storage, Settings & Migrations (FR-4xx)
 
@@ -835,9 +845,9 @@ Four entities exist in v1. There is no history entity: `FR-403` is `Withdrawn` (
 |---|---|---|
 | `id` | text, primary key | Generated locally |
 | `kind` | enum `openai_compatible` / `local` | Determines whether a key is required (FR-303) |
-| `local_flavor` | enum `opencode` / `ollama` / `lm_studio`, nullable | Present only when `kind` is `local`; the discriminator the FR-312 order needs. No endpoint or port is defined for OpenCode (`Pending decision (G-19)`) |
+| `local_flavor` | enum `opencode` / `ollama` / `lm_studio`, nullable | Present only when `kind` is `local`; the discriminator the FR-312 order needs. An `opencode` entry is user-configured only: the user supplies a loopback `base_url` and a `model_id`, no key is required, the entry is disabled by default, and it is never discovered or probed (`G-19`, resolved 2026-10-22) |
 | `base_url` | text | Loopback only for `local` kinds |
-| `model_id` | text | How it is chosen is `Pending decision (G-09)` |
+| `model_id` | text | Required, supplied by the user on the provider entry, and authoritative: selection and every request read this field, never a models route, and no model is auto-selected (`G-09`, resolved 2026-10-22) |
 | `label` | text | User-facing name |
 | `enabled` | boolean | Participation in provider selection (FR-312) |
 
@@ -848,7 +858,7 @@ Four entities exist in v1. There is no history entity: `FR-403` is `Withdrawn` (
 | `id` | text, primary key | Generated locally |
 | `provider_id` | text, references ProviderConfig | One provider, many keys (FR-302) |
 | `label` | text | User-facing name |
-| `masked_preview` | text | Display only; never reversible to the key (G-27) |
+| `masked_preview` | text | Display only, computed once at key save: a fixed-width mask that does not vary with key length and includes no part of the key's prefix, followed by the key's last four characters; never reversible to the key, because two keys that differ only outside those four characters produce byte-identical previews (`G-27`, resolved 2026-10-22) |
 | `status` | enum `valid` / `invalid` | Set to `invalid` on 401 (FR-305) |
 | `last_error_code` | text, nullable | From the §7 catalog |
 | `invalid_since` | timestamp, nullable | Set with `status = invalid` |
@@ -895,7 +905,7 @@ This surface is proposed. It is to be ratified by the architecture change that i
 | `get_settings` | UI → Rust | — | `settings` | FR-401 |
 | `update_settings` | UI → Rust | `entries` (`key`, `value`) | `settings` | FR-401, FR-505 |
 
-Notes. `humanize_text` returning a `run_id` with results delivered by events is one of two shapes consistent with `AGENTS.md` §7.2; the alternative — results in the command response — is equally valid and is left to the architecture change. `secret` is the only request field carrying key material and it is never echoed back. `model_id` is carried on the provider record, and how it is chosen or discovered is `Pending decision (G-09)`. `local_flavor` is what lets FR-312 tell OpenCode, Ollama, and LM Studio apart; no endpoint or port is asserted for OpenCode (`Pending decision (G-19)`).
+Notes. `humanize_text` returning a `run_id` with results delivered by events is one of two shapes consistent with `AGENTS.md` §7.2; the alternative — results in the command response — is equally valid and is left to the architecture change. `secret` is the only request field carrying key material and it is never echoed back. `model_id` is carried on the provider record, is supplied by the user, and is authoritative for every request; no command in this surface lists, selects, or infers a model, and a listing assist, if one is added in a later change, is user-initiated and only fills the field (`G-09`, resolved 2026-10-22). `local_flavor` is what lets FR-312 tell OpenCode, Ollama, and LM Studio apart; for OpenCode no endpoint, port, or probe rule is asserted, because the user supplies `base_url` and `model_id` on the provider entry and the core never fills them in (`G-19`, resolved 2026-10-22).
 
 ### 6.2 Events
 
@@ -1093,25 +1103,25 @@ Gate values: `G1` document approval; `G2` first implementation change (skeleton)
 | G-06 | Open | What is the outcome when no attempt passes the span and meaning checks — return the source text, return the best rejected attempt with a warning, or fail the chunk? | Product | FR-205, FR-208 | G4 |
 | G-07 | Open | How is an enabled-but-unverified local provider presented in the interface? | Product | FR-212, FR-303 | G4, G5 |
 | G-08 | Deferred | History is a v1 Won't and `FR-403` stays `Withdrawn`; whether history ships at all is deferred to a later decision | Product | FR-403 | None |
-| G-09 | Open | How is a provider's model identifier determined — declared per provider entry, or read from an OpenAI-compatible models route? | Architecture | ProviderConfig, FR-301 | G5 |
+| G-09 | Resolved | A provider's model identifier is a required, user-supplied `model_id` on the provider entry and is authoritative: provider selection and every request read that field from configuration, never an OpenAI-compatible models route, and no model is ever chosen on the user's behalf. A user-initiated listing MAY fill the field as an assist; an unknown or wrong model name is an ordinary provider failure under FR-309. Decided 2026-10-22 | Architecture | ProviderConfig, FR-301 | G5 |
 | G-10 | Resolved | Attempt counting: span and meaning rejections and invalid provider outputs count toward the 3 to 5 cap, encoded in FR-205 | Product | FR-205 | None |
 | G-11 | Open | Which default maximum attempt count is used inside the 3 to 5 bound? | Product | FR-205 | G4 |
 | G-12 | Open | What is the full settings inventory beyond UI language, provider configuration, and detection options? | Product | FR-401 | G2 |
-| G-13 | Open | What are the exponential backoff base and cap for 429 and network-drop retries? | Architecture | FR-307, FR-308 | G5 |
+| G-13 | Resolved | One backoff curve serves a 429 without a usable `Retry-After`, a network drop, and a timeout: the delay after the `n`-th failed attempt is `min(cap, base * 2^(n-1))` with base 1 s and cap 30 s per wait, and the actual wait is drawn with full jitter uniformly in `[0, computed]`, from an injected source so tests are deterministic and offline. A `Retry-After` that is present and parseable replaces the computed delay with the stated duration rather than combining with it. Decided 2026-10-22 | Architecture | FR-307, FR-308, FR-309 | G5 |
 | G-14 | Open | Which word-count method is shared by the UI and the Rust validator? | Architecture | FR-503, FR-504 | G2 |
 | G-15 | Open | How is wrong-language output defined? Script mixing alone must never reject an attempt | Product | FR-309 | G4 |
 | G-16 | Open | How are names recognized as protected spans, given that numbers, code blocks, quotations, and URLs are structurally detectable? | Humanizer track | FR-206 | G4 |
 | G-17 | Open | What are the remaining `humanize://progress` payload semantics beyond chunk index, attempt, and before/after scores? | Architecture | FR-210 | G4 |
 | G-18 | Open | What fields does the final report carry besides the merged text, the final score, and the local-detector label? | Product | FR-211, FR-511 | G4 |
-| G-19 | Open | What are OpenCode's endpoint and port? No port and no probe rule is defined for OpenCode in v1 | Architecture | FR-312 | G5 |
-| G-20 | Open | What happens when the keyring is readable at write time but returns existing keys unreadable at run time? No cached copy is permitted and no key may be deleted | Security track | FR-313 | G5 |
+| G-19 | Resolved | OpenCode has no default endpoint, no default port, and no probe rule in v1: it is a user-configured entry with `kind` `local` and `local_flavor` `opencode`, carrying a loopback `base_url` and a `model_id`, requiring no key, disabled by default, and never discovered by Aref. `FR-304` keeps ports 11434 and 1234 as the only probe targets. Decided 2026-10-22 | Architecture | FR-312, FR-304 | G5 |
+| G-20 | Resolved | A stored key the keyring cannot read is unusable but not `invalid`: the core fails over past it, keeps its status unchanged, and never caches, decrypts, or deletes it. When no stored key can be read, the run reports `E_KEYRING_UNAVAILABLE` with `reason` `unreadable` and asks the user to unlock or repair the OS keyring; a write that reads back unreadable is the same case. Decided 2026-10-22 | Security track | FR-313, NFR-201 | G5 |
 | G-21 | Resolved | Quotas and usage accounting are excluded from v1; they are unsupported by the current architecture | Product | — | None |
 | G-22 | Open | What is the English baseline quality bar, given that Arabic is the primary quality target? | Product | NFR-405 | G6 |
 | G-23 | Open | What are the startup-time, memory, and detection-latency budgets? | Product + Architecture | NFR-101, NFR-102 | G2 |
 | G-24 | Open | What minimum contrast ratio applies, and against which surface tokens? | Design | NFR-404 | G7 |
 | G-25 | Resolved | Optional larger model downloads are roadmap only; v1 ships the bundled model and does not fetch models | Product | FR-110 | None |
 | G-26 | Deferred | The license choice is deferred; the v1 action is settled as no LICENSE file and no license headers | Product | — | None |
-| G-27 | Open | What is the masking rule, and which test proves a masked preview cannot be reversed to the key? | Security track | FR-310 | G5 |
+| G-27 | Resolved | The masked preview is the key's last four characters behind a mask of fixed width that does not vary with key length and includes no part of the key's prefix: it is computed once when the key is saved and is never recomputed by re-reading the stored key. Non-reversibility is proved by the criterion that two keys that differ only outside those four characters produce byte-identical previews. Decided 2026-10-22 | Security track | FR-310, NFR-201 | G5 |
 | G-28 | Resolved | Missing `npm` and `cargo` scripts are owned by the first implementation change that needs them | Architecture | — | None |
 | G-29 | Resolved | The `AGENTS.md` §12 build-order citation named `FR-201..207` as providers and security. The approved replacement line was applied on 2026-10-21, and no FR range changed | Product | All FR ranges | None |
 

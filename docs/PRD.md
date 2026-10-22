@@ -168,14 +168,14 @@ Every feature below is defined in `docs/SRS.md`. The FR column is the contract; 
 | Live attempt progress | Per-attempt feedback: which chunk, which attempt, score before and after | `FR-210` | Remaining payload semantics `G-17` |
 | Availability without a provider | Humanize is disabled with a route to Settings, and Detect is untouched | `FR-212` | Enablement from persisted configuration only (`G-07` ruling) |
 | Cancel and partial results | Stopping takes effect immediately, and finished chunks are not thrown away | `FR-213` | Partial reports carry the local-detector label |
-| OpenAI-compatible transport | Works with any OpenAI-compatible endpoint the user already uses | `FR-301` | Model identifier handling `G-09` |
+| OpenAI-compatible transport | Works with any OpenAI-compatible endpoint the user already uses | `FR-301` | model_id is required, user-supplied, and authoritative; no model is chosen for the user (`G-09`, resolved) |
 | Key pool and failover | Several keys per provider, automatic failover, and invalid keys marked rather than discarded | `FR-302`, `FR-305`, `FR-306` | A 401 never deletes a key |
 | Local providers without keys | Ollama or LM Studio can be used with no API key at all | `FR-303` | "No key" never means "cannot humanize" |
 | User-initiated loopback discovery | A deliberate search that contacts only the machine's own ports 11434 and 1234 | `FR-304` | No LAN scan, no background probing (`NFR-206`) |
-| Rate limits, timeouts, and network recovery | A stated wait time instead of a mystery, backoff instead of a hard stop, and completed chunks returned on final failure | `FR-307`, `FR-308`, `FR-309` | Backoff base and cap `G-13`; wrong-language definition `G-15` |
-| Key storage in the OS keyring | Keys never touch a file, a log, or an error message; only a masked preview is shown | `FR-310`, `FR-313` | Masking rule `G-27`; unreadable-keyring behavior `G-20` |
+| Rate limits, timeouts, and network recovery | A stated wait time instead of a mystery, backoff instead of a hard stop, and completed chunks returned on final failure | `FR-307`, `FR-308`, `FR-309` | Backoff base 1 s and cap 30 s per wait (`G-13`, resolved); wrong-language definition `G-15` |
+| Key storage in the OS keyring | Keys never touch a file, a log, or an error message; only a masked preview is shown | `FR-310`, `FR-313` | Last four characters behind a fixed-width mask (`G-27`, resolved); an unreadable key is unusable but not invalid (`G-20`, resolved) |
 | Providers screen | One place to list, add, edit, and remove providers and keys, with notices when a key is invalid | `FR-311` | Masked previews only |
-| Provider priority | The user's local setup is used before a cloud key | `FR-312` | Order: OpenCode, Ollama, LM Studio, then cloud; OpenCode endpoint `G-19` |
+| Provider priority | The user's local setup is used before a cloud key | `FR-312` | Order: OpenCode, Ollama, LM Studio, then cloud; OpenCode is user-configured, keyless, off by default, never probed (`G-19`, resolved) |
 | Settings that survive restarts | Preferences, starting with interface language, persist across launches | `FR-401` | Full inventory `G-12` |
 | Store safety | No key material in any local store, and key status stored separately from key material | `FR-402`, `FR-405` | Backed by `NFR-201` and `NFR-407` |
 | Schema migrations | Upgrades keep existing settings instead of resetting them | `FR-404` | Runs at startup |
