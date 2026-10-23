@@ -13,9 +13,14 @@ this folder is not enough.
 requirement is promoted, reworded, or restatused, and nothing here substitutes for QA
 evidence or an OpenSpec status.
 
+**Live gate state.** The newest entry governs what may start. Earlier gate tables are annotated
+in place with a dated marker when their state changes, not deleted, so the log stays an audit
+trail.
+
 | ID | Date | Change | Subject | Status |
 |---|---|---|---|---|
 | `DLV-2026-10-23-01` | 2026-10-23 | `add-providers-security` | One change, four PR slices | Decided |
+| `DLV-2026-10-23-02` | 2026-10-23 | `add-providers-security` | Change-level approval; slice 1 (group 1) unblocked | Decided |
 
 ---
 
@@ -156,12 +161,15 @@ approval plus a path-scoped tree plus a working toolchain.
 
 | # | Gate | Current state | Evidence |
 |---|---|---|---|
-| **G-1** | The change (or slice 1 explicitly) is approved by the product owner | **OPEN** | `design.md` line 15: `Status: Draft — a design, not an approval.` No approval of the change as a whole is recorded in any artifact. Group 4's 2026-10-22 unblocking approved a *design document*, not this change. |
+| **G-1** | The change (or slice 1 explicitly) is approved by the product owner | **CLOSED 2026-10-23** — change-level approval, `DLV-2026-10-23-02` | At the time of this finding: `design.md` line 15 read `Status: Draft — a design, not an approval`, and no approval of the change as a whole was recorded in any artifact. Group 4's 2026-10-22 unblocking approved a *design document*, not this change. Closed by the owner's answer "Approve the whole change". |
 | **G-2** | Repository is genuinely unbuilt — nothing to reconcile | **SATISFIED** | Glob finds no `src/**`, no `src-tauri/**`, no `package.json`, `package-lock.json`, `Cargo.toml`, `tsconfig.json`, `vite.config.ts`, or `tauri.conf.json`. `1.1` starts from zero. |
-| **G-3** | Slice 1's PR can be path-scoped to the scaffold only | **OPEN — needs a commit first** | `git status --short` (parent session; shell unavailable to me here, so this is inherited, not re-run): three untracked paths — `docs/design/`, `openspec/changes/add-design-baseline/`, `openspec/changes/add-providers-security/` — at HEAD `955fa38`. `docs/PRD.md`, `docs/SRS.md`, and `docs/ar/` do not appear as untracked, so they are already in HEAD. The three planning paths must be committed in their own commit before slice 1 opens, or the scaffold PR would mix planning artifacts with application code. |
+| **G-3** | Slice 1's PR can be path-scoped to the scaffold only | **SATISFIED 2026-10-23** at HEAD `183c663` | At the time of this finding: three untracked paths — `docs/design/`, `openspec/changes/add-design-baseline/`, `openspec/changes/add-providers-security/` — at HEAD `955fa38`, i.e. planning artifacts not yet committed. They are now committed at `183c663` with a clean tree, so the scaffold PR starts from a scaffold-only diff. Evidence inherited from the orchestrator; shell was unavailable in this session. |
 | **G-4** | Toolchain present on the Windows host: Node/npm (for `npm run typecheck`), a Rust toolchain with MSVC build tools, WebView2 (Tauri 2) | **UNVERIFIED** | `1.1`'s binary check is `npm run typecheck` exits 0 and `package-lock.json` is the only lockfile. Shell is blocked in this session, so presence of `node`, `npm`, `rustc`, and `cargo` is an **assumption to verify at kickoff**, not a finding. |
 | **G-5** | Requirements may stay `Draft` | **SATISFIED — not a gate** | `proposal.md` line 45: *"no requirement is promoted, reworded, or withdrawn. `FR-301`–`FR-313` stay `Draft`; promotion is a separate decision."* Implementation is authorized by an approved change, not by promoting SRS rows. |
 | **G-6** | No upstream dependency inside the change | **SATISFIED** | `1.1` is the first task of group 1; group 1 has no predecessor. `2.13`'s design dependency is already settled (security constant in `design.md` §6.5). |
+
+**Table note (2026-10-23).** `G-1` and `G-3` rows were annotated when their state changed; each
+keeps its original finding in the evidence cell. `G-4` is still an unverified fact, not a gate.
 
 **Minimum to start `1.1`:** `G-1` (owner approves the change or slice 1) and `G-3` (planning
 artifacts committed separately), with `G-4` confirmed in the first minutes of the task. Nothing
@@ -170,6 +178,12 @@ else stands in the way, and no artifact outside `docs/delivery/` needs to change
 ---
 
 ## Next gate
+
+> **Superseded 2026-10-23 by `DLV-2026-10-23-02`.** That approval was given, change-level;
+> `1.1` is unblocked. The text below is kept as the state at time of writing. The gate that now
+> blocks the next slice is `G-S2` — group 1 (`1.1`–`1.11`) fully checked. The one decision the
+> approval did settle is a delivery question, not a technical one: change-level rather than
+> slice-scoped. Every open technical decision — `G-12` above all — is untouched.
 
 **Product owner approval of `add-providers-security` as a change — or an explicit, recorded
 authorization of slice 1 only.** Until then, `1.1` does not start, because `design.md` still
@@ -185,4 +199,133 @@ commit or archive.
 | 1 | Does group 5 (`5.1`–`5.10`) land in slice 4's PR or its own? | Assumption, flagged above | Product owner |
 | 2 | Is `add-design-baseline` archived before slice 1 opens, or left until later? | Hygiene choice, not a blocker | Product owner |
 | 3 | Is the local toolchain (Node, Rust/MSVC, WebView2) ready for `1.1`? | Unverified fact | Software Engineer at kickoff |
-| 4 | Does the owner want slice 1's approval recorded as change-level approval, or scoped to slice 1? | Decision, see next gate | Product owner |
+| 4 | Does the owner want slice 1's approval recorded as change-level approval, or scoped to slice 1? | **Answered 2026-10-23: change-level** — `DLV-2026-10-23-02` | Product owner |
+
+---
+
+## `DLV-2026-10-23-02` — `add-providers-security` approved as a change; group 1 (slice 1) unblocked
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-10-23 |
+| **Approver** | Product owner — owner of scope, priority, risk, and release |
+| **Change** | `add-providers-security` — one change, four PR slices (`DLV-2026-10-23-01`); 62 tasks, 0 checked when this approval was recorded |
+| **Status** | **Decided and binding.** Change-level approval, not slice-scoped. Binding on delivery until the owner reverses it in a later entry. |
+| **Approval instrument** | **This entry.** Not `openspec/changes/add-providers-security/design.md`, not a checked task, not a PR. |
+| **Provenance** | The question and the answer were put to the owner in the 2026-10-23 delivery session and relayed verbatim to this record by the orchestrator. I did not speak to the owner directly; the quoted answer is the approval. |
+| **Repository state when recorded** | HEAD `183c663`, working tree clean; the change is committed there with `docs/design/DESIGN.md` and this file. `openspec validate add-providers-security --strict` passed and `openspec list` showed `in-progress`, 0/62 tasks. **Inherited from the orchestrator** — shell was unavailable in this session, so these were not re-run here. |
+| **Artifacts changed by this record** | This file only. No file under `openspec/`, `docs/design/`, `docs/PRD.md`, `docs/SRS.md`, or `docs/ar/` was edited. No requirement was promoted, reworded, or restatused. |
+
+**Note on the ID.** The approved option says "against `DLV-2026-10-23-01`". That ID is used here
+as the reference: entry 01 is the sequencing decision, and its `R-2` gate table held `G-1` open.
+A closed gate is a new dated fact, so it is recorded as entry 02 rather than by rewriting entry
+01; entry 01's `G-1` row is annotated in place with a pointer. The approved intent — record the
+change-level approval in this file — is honoured.
+
+### The approval (verbatim)
+
+**Question put to the owner** — one decision, no bundle:
+
+> "The change is valid but unapproved, which blocks task 1.1. Approve it so slice 1 can start?"
+
+**Owner's answer:**
+
+> **"Approve the whole change (Recommended)"**
+
+**The option's description, quoted because the answer alone does not carry its scope:**
+
+> "scrum-master records change-level approval against DLV-2026-10-23-01 in docs/delivery/decisions.md, then software-engineer implements slice 1 (tasks 1.1-1.11) inside it. Consistent with your 'one change, four PR slices' ruling. Slices 2-4 still stop at their own entry gates per tasks.md line 3, so this does not authorize the other 51 tasks."
+
+### What this authorizes
+
+| # | Authorized | Limit that still applies |
+|---|---|---|
+| 1 | **The change `add-providers-security` is approved as a whole** — its 26 requirements across `app-shell` (9), `providers` (13), and `key-security` (4) are the approved implementation scope. | The requirements are *served*, not *promoted*. `Draft` status is untouched. |
+| 2 | **Task group 1 (`1.1`–`1.11`) may start now**, as one PR slice, with `software-engineer` as owner and each task's own binary check as the bar. | Starting is not done. A task is done when its check passes (`tasks.md` line 3) and the `AGENTS.md` §12 definition of done holds. |
+| 3 | **Slices 2–4 need no further owner *approval*.** The change they belong to is approved. | They still stop at their **entry gates**: group 2 after group 1 is fully checked, group 3 after group 2, group 4 after group 3. These are dependency gates, not approval gates. |
+| 4 | The four-slice delivery shape of `DLV-2026-10-23-01` stands as the shape of the approved scope. | Running slices in parallel still needs an explicit owner decision (`DLV-2026-10-23-01` consequence 4). |
+
+**The reading that keeps both rules true:** the approval blocker is gone; the sequencing blocker
+is not. An agent may start `1.1` today and may **not** start `2.1` until group 1 is fully
+checked, even though `2.1` sits inside an approved change.
+
+### What this does NOT authorize
+
+| # | Not authorized | Rule it would otherwise break |
+|---|---|---|
+| 1 | **Tasks `2.1`–`5.10` — the other 51 tasks.** Starting any group before its predecessor is fully checked, including "just scaffolding" work that belongs to slice 2. | `tasks.md` line 3; `DLV-2026-10-23-01` consequence 6. |
+| 2 | **Any promotion, reword, or restatus of a requirement.** `FR-301`–`FR-313`, `NFR-201`, `NFR-202`, `NFR-205`, `NFR-206`, `NFR-306` stay `Draft`; so do the skeleton's `NFR-203`, `NFR-307`, `NFR-308`, `NFR-401`, `NFR-402`, `NFR-403`. | `proposal.md` line 45; `design.md` line 15; `AGENTS.md` §2. Implementation authority comes from an approved change, not from SRS row status. |
+| 3 | **Any commit, push, merge, archive, tag, or release** — including committing slice 1's 11 tasks. Those run only as the exact commands the owner approves, executed by `release-operator`. | `AGENTS.md` §16.3. Archive additionally needs QA evidence and the owner's approval. |
+| 4 | **Any deviation from the change's scope**: a provider SDK, a telemetry or crash-reporting package, a cloud key reachable from the UI, a network call on the Detect path, a `tailwind.config.js` by default, a non-`npm` lockfile, signing steps, a macOS/Linux code path, a key or user text in a log line, a plaintext key fallback. | `AGENTS.md` §3, §4, §10; `NFR-201`–`NFR-203`, `NFR-307`, `NFR-308`. None is negotiable for schedule. |
+| 5 | **A change to the four-slice sequencing**, an early `openspec-sync-specs`, an archive before slice 4, or a split of the change. | `DLV-2026-10-23-01` consequences 2 and 6. Each is a scope change and returns to the owner. |
+| 6 | **A quality-gate waiver, or a "done" claim from the builder.** QA's independent gate is unchanged by this entry, and no checkbox here substitutes for test evidence. | `AGENTS.md` §12; this file's preamble. |
+| 7 | **A decision on group 5's placement** (`5.1`–`5.10` in slice 4's PR or its own). Carried forward below, not assumed. | Still open; see carry-forward 1. |
+| 8 | **A settlement of `design.md` §13 items 3, 5, 6.** None blocks slices 1–3. | `design.md` §13; the only settled decisions are `D-1`–`D-5` (`tasks.md` line 11). |
+
+### Gate status after this entry
+
+| Gate | State | Evidence |
+|---|---|---|
+| **`G-1`** — the change (or slice 1) is approved by the owner | **CLOSED 2026-10-23** | This entry. Was `OPEN` in `DLV-2026-10-23-01` §R-2. |
+| **`G-2`** — tree genuinely unbuilt, nothing to reconcile | **SATISFIED** | No `src/**`, `src-tauri/**`, or manifests at the last check; `1.1` starts from zero. |
+| **`G-3`** — planning artifacts committed in their own commit | **SATISFIED 2026-10-23** | Change, `docs/design/DESIGN.md` and this file are committed at `183c663`; tree clean. Inherited evidence, not re-run here. |
+| **`G-4`** — toolchain (Node/npm, Rust + MSVC, WebView2) on the Windows host | **OPEN — unverified fact** | First-minute check at kickoff. Not an approval gate; `software-engineer` confirms it before claiming `1.1`'s check. |
+| **`G-5`** — requirements may stay `Draft` | **SATISFIED — not a gate** | See *What this does NOT authorize* row 2. |
+| **`G-6`** — no upstream dependency inside the change | **SATISFIED** | `1.1` is group 1's first task. |
+| **`G-S2`** — **new: slice 2 entry** | **OPEN — blocks `2.1`–`2.14`** | Group 1 (`1.1`–`1.11`) fully checked, each box backed by its own check, plus `G-4` confirmed. Same shape for `G-S3` (group 2 checked) and `G-S4` (group 3 checked). |
+
+**The gate that now blocks slice 2 is `G-S2`: group 1 fully checked.** Not owner approval, not
+OpenSpec status. It closes only when all 11 tasks in group 1 are checked *and* the evidence behind
+each is verified — a checked box is a claim, not proof.
+
+### The `design.md` line 15 question — position
+
+`openspec/changes/add-providers-security/design.md` line 15 still reads:
+
+> Status: `Draft` — a design, not an approval. Requirement statuses are untouched; `FR-301`–`FR-313` stay `Draft`.
+
+**Position: the line is accurate, not stale, and it must not be read as evidence that the change
+is unapproved. No file under `openspec/` needs to change for this approval to take effect or for
+slice 1 to start.**
+
+Three reasons, in the order a reader should apply them:
+
+1. **The line's subject is the document, not the change.** "A design, not an approval" says this
+   document confers no approval. That is still exactly true: this entry is the instrument, and the
+   document confers nothing.
+2. **Its second clause is still literally true, and deliberately so.** No requirement status moved.
+   The approval was given on the understanding that it would not promote anything (`G-5`).
+3. **Authority runs the other way.** `AGENTS.md` §2 ranks OpenSpec above delivery records. Editing
+   an OpenSpec artifact to say "Approved" because a delivery decision said so would assert a
+   delivery fact inside a spec-authority file — the precedence problem, not the fix. Approval state
+   belongs in `docs/delivery/`; design content belongs in `openspec/`.
+
+**Binding reading rule for later agents.** Change-approval state is read from this file, never
+inferred from a `Draft` status in `design.md`. `Draft` there describes the document's own standing;
+it is not a statement about the change. Conversely, this entry approves the **change**, not the
+design's open items — §13 items 3, 5, 6 stay open.
+
+**Recommendation, non-blocking, outside my write path.** One pointer clause after line 15 would
+remove the ambiguity permanently, e.g.: *"Change-level delivery approval: `docs/delivery/decisions.md`
+`DLV-2026-10-23-02`; requirement statuses above remain untouched."* That clarifies standing without
+changing a status, and `design.md` belongs to `software-architect`. I did not edit it. Until it
+lands, this entry governs, and the missing pointer is **not** a gate — no agent may block slice 1
+on it.
+
+### Carry-forward — still open, not assumed
+
+| # | Item | State after this entry | Owner |
+|---|---|---|---|
+| 1 | Group 5 placement: `5.1`–`5.10` in slice 4's PR, or a fifth verification PR inside the same change? | **Still unanswered.** The approval puts group 5 in scope; it does not choose which PR carries it. `DLV-2026-10-23-01` reads it as slice 4's PR and flags that as an assumption. Not a blocker for slices 1–3. | Product owner |
+| 2 | Archive `add-design-baseline` (25/25, unarchived) before slice 1 opens? | **Still open.** Hygiene, not a gate, and it must not be folded into slice 1's PR (one concern per PR, `AGENTS.md` §12). | Product owner / `release-operator` |
+| 3 | Toolchain readiness for `1.1` (`G-4`) | **Unverified fact.** Confirm at kickoff, before claiming `1.1`'s check. | `software-engineer` |
+| 4 | Whether `design.md` line 15 gains the pointer clause | **Recommendation only**, non-blocking, not required for slice 1. | `software-architect`, via `orchestrator` |
+
+**Closed by this entry:** open question 4 of `DLV-2026-10-23-01` — the approval is **change-level**,
+not slice-scoped.
+
+### Consequence for the next move
+
+`1.1` may start. The next obligation is the first *evidence* gate, not another approval: 11 checks
+green, then `G-S2`. No commit happens until the owner approves the exact commands.
+
