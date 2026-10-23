@@ -1,0 +1,16 @@
+[
+  "error.input.empty",
+  "error.input.too_long",
+  "error.provider.none",
+  "error.provider.key_invalid",
+  "error.provider.rate_limited",
+  "error.provider.network_offline",
+  "error.provider.timeout",
+  "error.provider.stream_interrupted",
+  "error.provider.output_rejected",
+  "error.humanize.failed",
+  "notice.detector.statistical_only",
+  "error.detector.model_restore_failed",
+  "error.security.keyring_unavailable",
+  "error.internal"
+]
