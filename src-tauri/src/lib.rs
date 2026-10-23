@@ -7,7 +7,10 @@
 
 pub mod commands;
 pub mod error;
+pub mod providers;
+pub mod security;
 pub mod status;
+pub mod storage;
 
 use std::sync::Arc;
 

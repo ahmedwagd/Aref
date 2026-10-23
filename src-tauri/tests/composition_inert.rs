@@ -3,10 +3,11 @@
 //!
 //! Proving a negative needs a stated method. Two complementary ones are used here:
 //!
-//! 1. **Capability absence** — nothing in `src-tauri/src` can write a file or open a
-//!    socket, because no source refers to `std::fs`, `std::net`, `std::process` or an
-//!    HTTP crate, and no direct dependency supplies one. A future module that wants
-//!    that ability has to break this test to get it.
+//! 1. **Capability absence** — nothing in `src-tauri/src` can open a socket or spawn a
+//!    process, because no source refers to `std::net`, `std::process` or an HTTP crate,
+//!    and no direct dependency supplies one; and exactly one module may touch a file,
+//!    the migration guard `storage/db.rs`, which `FR-404` requires (`design.md` §8.3).
+//!    A future module that wants that ability has to break this test to get it.
 //! 2. **Observation** — composing the application state twice leaves the source tree
 //!    byte-identical (no file appears or changes) and yields the same snapshot, so the
 //!    composition path is pure. A socket cannot be counted portably without a syscall
@@ -129,9 +130,8 @@ fn no_reporting_or_remote_config_module_exists() {
 }
 
 #[test]
-fn no_source_can_write_a_file_or_open_a_socket() {
+fn no_source_opens_a_socket_or_spawns_a_process() {
     for needle in [
-        "std::fs",
         "std::net",
         "std::process",
         "reqwest",
@@ -144,6 +144,30 @@ fn no_source_can_write_a_file_or_open_a_socket() {
             "{needle} is present"
         );
     }
+}
+
+/// `FR-404` and `design.md` §8.3 put one file copy in the build: the migration guard.
+/// That guard is `storage/db.rs`, and it is the only source file allowed to name
+/// `std::fs` — the scan below is the allow-list, so a second writer fails the build
+/// rather than being discovered in review.
+#[test]
+fn only_the_migration_guard_writes_a_file() {
+    let allowed = Path::new("src").join("storage").join("db.rs");
+    let mut offenders = offenders("std::fs");
+    offenders.retain(|path| Path::new(path) != allowed);
+    assert_eq!(
+        offenders,
+        Vec::<String>::new(),
+        "a module other than storage/db.rs can write a file"
+    );
+    let guard = match std::fs::read_to_string(manifest_dir().join(&allowed)) {
+        Ok(text) => text,
+        Err(error) => panic!("cannot read storage/db.rs: {error}"),
+    };
+    assert!(
+        guard.contains("std::fs"),
+        "storage/db.rs no longer performs the migration guard's file copy"
+    );
 }
 
 #[test]
