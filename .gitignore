@@ -35,3 +35,8 @@ src-tauri/gen
 .env.*
 *.key
 *.pem
+
+# Local SQLite artifacts
+*.db
+*.db-wal
+*.db-shm
