@@ -3,3 +3,4 @@
 pub mod app;
 pub mod dto;
 pub mod parse;
+pub mod providers;

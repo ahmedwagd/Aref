@@ -3,11 +3,13 @@
 //!
 //! Proving a negative needs a stated method. Two complementary ones are used here:
 //!
-//! 1. **Capability absence** — nothing in `src-tauri/src` can open a socket or spawn a
-//!    process, because no source refers to `std::net`, `std::process` or an HTTP crate,
-//!    and no direct dependency supplies one; and exactly one module may touch a file,
-//!    the migration guard `storage/db.rs`, which `FR-404` requires (`design.md` §8.3).
-//!    A future module that wants that ability has to break this test to get it.
+//! 1. **Capability absence** — no source in `src-tauri/src` can open a socket or spawn a
+//!    process: no file names `std::net`, `std::process`, `TcpStream` or `UdpSocket`, and the
+//!    HTTP client crate is named only under `providers/` (slice 3 moved that needle from
+//!    "absent" to "confined"; see `an_http_client_stays_inside_providers`). Exactly one
+//!    module may touch a file, the migration guard `storage/db.rs`, which `FR-404` requires
+//!    (`design.md` §8.3). A future module that wants either ability has to break a test to
+//!    get it.
 //! 2. **Observation** — composing the application state twice leaves the source tree
 //!    byte-identical (no file appears or changes) and yields the same snapshot, so the
 //!    composition path is pure. A socket cannot be counted portably without a syscall
@@ -129,21 +131,56 @@ fn no_reporting_or_remote_config_module_exists() {
     }
 }
 
+/// Nothing in `src-tauri/src` may open a socket or spawn a process, and the one HTTP client
+/// crate the request path uses may be named **only** inside `providers/`.
+///
+/// Slice 3 narrowed this guard: `providers::client::ReqwestTransport` is the single place
+/// that speaks HTTP, which is what keeps the future detector from inheriting a client
+/// (`design.md` §3.2 rule 4). The socket types stay forbidden everywhere — including in
+/// `providers/` — because a request path that needs `std::net` directly would mean the
+/// transport had been bypassed. That is the half of this guard the Detect path relies on.
 #[test]
 fn no_source_opens_a_socket_or_spawns_a_process() {
-    for needle in [
-        "std::net",
-        "std::process",
-        "reqwest",
-        "TcpStream",
-        "UdpSocket",
-    ] {
+    for needle in ["std::net", "std::process", "TcpStream", "UdpSocket"] {
         assert_eq!(
             offenders(needle),
             Vec::<String>::new(),
-            "{needle} is present"
+            "{needle} is present in src-tauri/src"
         );
     }
+}
+
+/// The HTTP client crate appears only under `providers/` (design.md §3.2 rule 4).
+///
+/// This is the narrowed form of the pre-slice-3 check, which forbade the name outright.
+/// The confinement is what matters: a detector module that wants a client has to move this
+/// test to get one.
+#[test]
+fn an_http_client_stays_inside_providers() {
+    let providers = Path::new("src").join("providers");
+    let named = offenders("reqwest");
+    let mut outside: Vec<String> = named
+        .iter()
+        .filter(|path| !Path::new(path).starts_with(&providers))
+        .cloned()
+        .collect();
+    outside.sort();
+    assert_eq!(
+        outside,
+        Vec::<String>::new(),
+        "the HTTP client crate is named outside src/providers/"
+    );
+
+    // Positive control: the request path does name it, so the scan above is not passing on a
+    // tree that has no client at all.
+    let inside = named
+        .iter()
+        .filter(|path| Path::new(path).starts_with(&providers))
+        .count();
+    assert!(
+        inside > 0,
+        "no provider source names the HTTP client, so this guard proves nothing"
+    );
 }
 
 /// `FR-404` and `design.md` §8.3 put one file copy in the build: the migration guard.
@@ -184,6 +221,14 @@ fn the_composition_root_registers_no_plugin_and_no_setup_hook() {
     );
 }
 
+/// Exactly one HTTP client, declared with an explicit feature set (task 3.3/3.4).
+///
+/// Slice 3 narrowed this guard too: `reqwest` is now the request path's client, so the
+/// assertion moved from "no client at all" to "no *other* client, and no default feature set
+/// that would smuggle one in". `default-features = false` is the load-bearing part: the
+/// default set pulls a TLS stack, a charset decoder and HTTP/2, none of which this slice
+/// asked for. `cookies`, `http3`, `charset` and `system-proxy` stay off: no cookie store, no
+/// HTTP/3, and no environment proxy a loopback probe could be routed through.
 #[test]
 fn no_direct_dependency_supplies_an_http_client() {
     let manifest = match std::fs::read_to_string(manifest_dir().join("Cargo.toml")) {
@@ -197,12 +242,54 @@ fn no_direct_dependency_supplies_an_http_client() {
         .split("\n[")
         .next()
         .unwrap_or_default();
-    for forbidden in ["reqwest", "hyper", "ureq", "isahc", "surf", "curl"] {
+
+    for forbidden in [
+        "hyper",
+        "ureq",
+        "isahc",
+        "surf",
+        "curl",
+        "attohttpc",
+        "native-tls",
+        "openssl",
+        "reqwest-middleware",
+    ] {
         assert!(
             !dependencies.contains(forbidden),
             "{forbidden} is a direct dependency"
         );
     }
+
+    let declaration = dependencies
+        .lines()
+        .find(|line| line.trim_start().starts_with("reqwest"))
+        .unwrap_or_else(|| panic!("reqwest is not declared"));
+    assert!(
+        declaration.contains("default-features = false"),
+        "reqwest must not inherit its default feature set: {declaration}"
+    );
+    for forbidden in [
+        "cookies",
+        "http3",
+        "charset",
+        "system-proxy",
+        "blocking",
+        "gzip",
+        "brotli",
+        "zstd",
+        "deflate",
+        "multipart",
+        "socks",
+    ] {
+        assert!(
+            !declaration.contains(forbidden),
+            "{forbidden} must not be enabled: {declaration}"
+        );
+    }
+    assert!(
+        declaration.contains("\"rustls\""),
+        "the request path needs TLS to reach a cloud provider: {declaration}"
+    );
 }
 
 #[test]

@@ -33,6 +33,17 @@ pub struct Removed {
     pub removed: bool,
 }
 
+/// The command layer hands the secret over as text, because no request DTO may name
+/// [`Secret`] (`tests/redaction_boundary.rs::no_dto_field_holds_a_secret`). This is the one
+/// conversion that layer uses; custody moves immediately into [`KeyService`], and `Secret`
+/// still has no `as_str`, no `Clone` and no `Serialize`, so the conversion adds no way to
+/// read a key back out.
+impl From<String> for Secret {
+    fn from(value: String) -> Self {
+        Secret::new(value)
+    }
+}
+
 pub struct KeyService {
     repo: Arc<dyn ProvidersRepo>,
     keystore: Arc<dyn KeyStore>,
@@ -48,12 +59,17 @@ impl KeyService {
     /// No validation of `provider_id` or `label` happens here: presence is the command
     /// layer's job (`E_INPUT_EMPTY`, `D-1`) and a repository is the wrong place to
     /// reject a blank label with a UI error code.
+    ///
+    /// `secret` is `impl Into<Secret>` so the command layer can pass the submitted `String`
+    /// without naming the secret type; every other caller passes a `Secret` it already
+    /// holds, which the blanket `Into` identity covers.
     pub async fn add(
         &self,
         provider_id: &str,
         label: &str,
-        secret: Secret,
+        secret: impl Into<Secret>,
     ) -> Result<KeyMetadata, AppError> {
+        let secret = secret.into();
         let id = KeyId::new(new_key_id());
         // Once, on the value in hand, before it moves into the blocking call.
         let masked_preview = mask::preview(&secret);
@@ -83,7 +99,12 @@ impl KeyService {
     /// An edit *is* a save: `FR-306`'s "editing it makes it eligible again" means the
     /// status, the invalid timestamp and the last error all clear, and the preview is
     /// derived afresh from the submitted value (`G-27`).
-    pub async fn edit(&self, key_id: &KeyId, secret: Secret) -> Result<KeyMetadata, AppError> {
+    pub async fn edit(
+        &self,
+        key_id: &KeyId,
+        secret: impl Into<Secret>,
+    ) -> Result<KeyMetadata, AppError> {
+        let secret = secret.into();
         let mut record = self
             .repo
             .find_key(key_id)
@@ -175,7 +196,12 @@ impl KeyService {
     }
 }
 
-fn keyring_unavailable() -> AppError {
+/// The `unavailable` catalog row for a credential-store failure.
+///
+/// `pub(crate)` because `providers::ProviderService::remove_provider` deletes a provider's
+/// credentials before its rows, and the two removal paths must not disagree about which
+/// `E_KEYRING_UNAVAILABLE` reason a failed delete is.
+pub(crate) fn keyring_unavailable() -> AppError {
     AppError::KeyringUnavailable {
         reason: KeyringFault::Unavailable,
     }
@@ -223,7 +249,14 @@ async fn read_from_store(
 }
 
 /// One blocking `delete`, off the runtime thread.
-async fn delete_from_store(store: Arc<dyn KeyStore>, id: KeyId) -> Result<(), KeyStoreError> {
+///
+/// `pub(crate)` for `ProviderService::remove_provider`, which deletes a provider's
+/// credentials before its rows; the wrapper (and therefore the `spawn_blocking` rule) stays
+/// in one place.
+pub(crate) async fn delete_from_store(
+    store: Arc<dyn KeyStore>,
+    id: KeyId,
+) -> Result<(), KeyStoreError> {
     match tokio::task::spawn_blocking(move || store.delete(&id)).await {
         Ok(outcome) => outcome,
         Err(_join) => Err(KeyStoreError::Backend(BackendKind::Platform)),
@@ -277,6 +310,14 @@ fn new_key_id() -> String {
         let _ = std::fmt::Write::write_fmt(&mut rendered, format_args!("{byte:02x}"));
     }
     rendered
+}
+
+/// A fresh identifier for a provider row.
+///
+/// The same generator the key path uses, so a provider id and a key id share one shape and
+/// one freshness rule instead of two implementations that could drift.
+pub(crate) fn new_provider_id() -> String {
+    new_key_id()
 }
 
 #[cfg(test)]
