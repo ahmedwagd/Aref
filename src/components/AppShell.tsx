@@ -36,12 +36,14 @@ export function AppShell({ t, navigation, status, children }: AppShellProps) {
           </div>
         </header>
         <main id="workspace" className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-          <section className="rounded-3xl border bg-card p-5 text-card-foreground">
-            <p dir="auto" className="text-sm">
-              {t('shell.workspace_placeholder')}
-            </p>
-          </section>
-          {children}
+          {/* A screen replaces the placeholder rather than stacking under it. */}
+          {children ?? (
+            <section className="rounded-3xl border bg-card p-5 text-card-foreground">
+              <p dir="auto" className="text-sm">
+                {t('shell.workspace_placeholder')}
+              </p>
+            </section>
+          )}
         </main>
       </div>
     </div>

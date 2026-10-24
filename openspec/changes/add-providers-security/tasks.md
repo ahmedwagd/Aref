@@ -78,28 +78,28 @@ Approved by the product owner on 2026-10-22. None of these is a gate any more: t
 
 Still not approved, and not to be invented: `D-04` (§4 density rules), `D-05` (§6 motion rules), `D-09` (§7.6 icon mirroring and script-aware leading), `D-07`, and the amber value in §2.3. §7.3's composition rules and §7.4's state mapping also remain `[Proposed]` in that document; the tasks below use them as the documented grammar and raise any departure rather than adding a variant.
 
-- [ ] 4.1 `features/providers/hooks.ts` — the only consumer of `src/ipc` for this feature, owning query and mutation state for `listProviders`, `addProvider`, `updateProvider`, `removeProvider`, `addKey`, `editKey`, `removeKey`, `probeLocalProviders`, `onKeyInvalid`, `onRateLimited`. Verify: `rg "invoke\(|listen\(" src/features/providers` returns nothing, and a hooks test drives one state transition through a mocked `src/ipc` module. Serves `FR-311`, `NFR-202`.
-- [ ] 4.2 `ProviderList` — one row per `ProviderView`, selection badge from `provider_summary.selected_provider_id`, no secret in row state. Verify: a component test renders three providers and asserts the badge sits on the selected id and the rendered tree contains no secret. Serves `FR-311`, `FR-312`.
-- [ ] 4.3 `KeyRow` — `masked_preview` inside `dir="ltr"` and `<bdi>`, `status`, and the per-key invalid notice. Verify: a test renders a key with `status: "invalid"` and asserts the notice is present; a test renders the preview inside an Arabic page and asserts its visual order is unmirrored. Serves `FR-311`, `FR-305`, `NFR-403`.
-- [ ] 4.4 `KeyForm` — the one place a secret exists in the frontend: one field plus a ref, cleared when the submit settles whether it resolved or rejected, never in a context, cache, or URL; `keyring_unavailable` is a blocking state. Verify: a test types a fixture secret, rejects the submit, and asserts the field is empty afterwards and no cache or URL carries the value; an `E_KEYRING_UNAVAILABLE` response renders the blocking state. Serves `NFR-202`, `FR-313`, `NFR-201`.
-- [ ] 4.5 `DiscoveryPanel` — the explicit button calling `probeLocalProviders`, then an `addProvider` offer per hit. Verify: the mocked ipc records zero calls before the click and one probe after it; each hit offers an add action. Serves `FR-304`, `FR-311`, `NFR-206`.
-- [ ] 4.6 `HumanizeDisabledNotice` — renders `error.provider.none` when `humanize_available` is false, with a Settings call to action. Verify: a test with `humanize_available: false` renders the catalog string and the action; with `true` it renders nothing. Serves `FR-212`, `FR-107`.
-- [ ] 4.7 Screen states and both directions: `loading`, `empty`, `ready`, `error`, plus `keyring_unavailable` and per-key `invalid`; every new screen rendered in `ar` and `en`; catalog parity; the hard-coded-string and physical-property scans. Verify: a state-transition test per state, each screen test run twice once per locale, and both offline scans returning zero matches. Serves `NFR-401`, `NFR-402`, `NFR-403`, `FR-311`.
+- [x] 4.1 `features/providers/hooks.ts` — the only consumer of `src/ipc` for this feature, owning query and mutation state for `listProviders`, `addProvider`, `updateProvider`, `removeProvider`, `addKey`, `editKey`, `removeKey`, `probeLocalProviders`, `onKeyInvalid`, `onRateLimited`. Verify: `rg "invoke\(|listen\(" src/features/providers` returns nothing, and a hooks test drives one state transition through a mocked `src/ipc` module. Serves `FR-311`, `NFR-202`.
+- [x] 4.2 `ProviderList` — one row per `ProviderView`, selection badge from `provider_summary.selected_provider_id`, no secret in row state. Verify: a component test renders three providers and asserts the badge sits on the selected id and the rendered tree contains no secret. Serves `FR-311`, `FR-312`.
+- [x] 4.3 `KeyRow` — `masked_preview` inside `dir="ltr"` and `<bdi>`, `status`, and the per-key invalid notice. Verify: a test renders a key with `status: "invalid"` and asserts the notice is present; a test renders the preview inside an Arabic page and asserts its visual order is unmirrored. Serves `FR-311`, `FR-305`, `NFR-403`.
+- [x] 4.4 `KeyForm` — the one place a secret exists in the frontend: one field plus a ref, cleared when the submit settles whether it resolved or rejected, never in a context, cache, or URL; `keyring_unavailable` is a blocking state. Verify: a test types a fixture secret, rejects the submit, and asserts the field is empty afterwards and no cache or URL carries the value; an `E_KEYRING_UNAVAILABLE` response renders the blocking state. Serves `NFR-202`, `FR-313`, `NFR-201`.
+- [x] 4.5 `DiscoveryPanel` — the explicit button calling `probeLocalProviders`, then an `addProvider` offer per hit. Verify: the mocked ipc records zero calls before the click and one probe after it; each hit offers an add action. Serves `FR-304`, `FR-311`, `NFR-206`.
+- [x] 4.6 `HumanizeDisabledNotice` — renders `error.provider.none` when `humanize_available` is false, with a Settings call to action. Verify: a test with `humanize_available: false` renders the catalog string and the action; with `true` it renders nothing. Serves `FR-212`, `FR-107`.
+- [x] 4.7 Screen states and both directions: `loading`, `empty`, `ready`, `error`, plus `keyring_unavailable` and per-key `invalid`; every new screen rendered in `ar` and `en`; catalog parity; the hard-coded-string and physical-property scans. Verify: a state-transition test per state, each screen test run twice once per locale, and both offline scans returning zero matches. Serves `NFR-401`, `NFR-402`, `NFR-403`, `FR-311`.
 
 ## 5. Verification
 
 Integration checks only; each group already carries its own tests. 5.1–5.9 are gates over the whole change rather than over one requirement — they serve no single ID, and each is the aggregate check that the work of all four groups holds at once (`AGENTS.md` §12). 5.10 names the requirement it serves.
 
-- [ ] 5.1 `npm run typecheck` exits 0.
-- [ ] 5.2 `npm run lint` exits 0.
-- [ ] 5.3 `npm test` exits 0 with every suite green.
-- [ ] 5.4 `npm run build` exits 0 and emits the bundle.
-- [ ] 5.5 `cargo fmt --check` exits 0 in `src-tauri`.
-- [ ] 5.6 `cargo clippy --all-targets -- -D warnings` exits 0 in `src-tauri`.
-- [ ] 5.7 `cargo test` exits 0 in `src-tauri`.
-- [ ] 5.8 Requirement trace check: the table below has 26 rows, each naming at least one task that exists in this file, and no task cites an ID absent from `docs/SRS.md` or from this change's three delta specs.
-- [ ] 5.9 `openspec validate add-providers-security` passes.
-- [ ] 5.10 No secret, key-shaped string, or real user text anywhere in the repository. Verify: a scan for `sk-`-shaped literals and for fixture values outside fixtures returns zero matches; fixtures use `fixture-secret-a`. Serves `NFR-207`.
+- [x] 5.1 `npm run typecheck` exits 0.
+- [x] 5.2 `npm run lint` exits 0.
+- [x] 5.3 `npm test` exits 0 with every suite green.
+- [x] 5.4 `npm run build` exits 0 and emits the bundle.
+- [x] 5.5 `cargo fmt --check` exits 0 in `src-tauri`.
+- [x] 5.6 `cargo clippy --all-targets -- -D warnings` exits 0 in `src-tauri`.
+- [x] 5.7 `cargo test` exits 0 in `src-tauri`.
+- [x] 5.8 Requirement trace check: the table below has 26 rows, each naming at least one task that exists in this file, and no task cites an ID absent from `docs/SRS.md` or from this change's three delta specs.
+- [x] 5.9 `openspec validate add-providers-security` passes.
+- [x] 5.10 No secret, key-shaped string, or real user text anywhere in the repository. Verify: a scan for `sk-`-shaped literals and for fixture values outside fixtures returns zero matches; fixtures use `fixture-secret-a`. Serves `NFR-207`.
 
 ## Requirement coverage
 

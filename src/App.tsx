@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { AppShell } from './components/AppShell';
 import { Navigation, type NavKey } from './components/Navigation';
+import { ProvidersScreen } from './features/providers/ProvidersScreen';
 import { applyDocumentLocale, createTranslator, defaultLocale, type Locale } from './i18n';
 import { useAppStatus } from './ipc';
 
@@ -23,6 +24,10 @@ export function App({ locale = defaultLocale }: AppProps) {
   }, [locale]);
 
   return (
-    <AppShell t={t} status={status} navigation={<Navigation t={t} active={active} onSelect={setActive} />} />
+    <AppShell t={t} status={status} navigation={<Navigation t={t} active={active} onSelect={setActive} />}>
+      {active === 'providers' ? (
+        <ProvidersScreen t={t} status={status} onOpenSettings={() => setActive('settings')} />
+      ) : null}
+    </AppShell>
   );
 }
